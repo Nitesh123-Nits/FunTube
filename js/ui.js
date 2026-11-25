@@ -34,6 +34,8 @@ export const icons = {
   moon: svg('<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>'),
   home: svg('<path d="M3 11l9-8 9 8v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/>'),
   reels: svg('<rect x="3" y="3" width="18" height="18" rx="4"/><path d="M3 9h18M9 3l3 6M15 3l3 6"/><path d="M10 13l5 3-5 3z" fill="currentColor"/>'),
+  down: svg('<path d="M6 9l6 6 6-6"/>'),
+  pause: svg('<rect x="6" y="4" width="4" height="16" rx="1" fill="currentColor"/><rect x="14" y="4" width="4" height="16" rx="1" fill="currentColor"/>'),
   play: svg('<path d="M6 4l14 8-14 8z" fill="currentColor"/>'),
 };
 
@@ -69,7 +71,7 @@ new MutationObserver((mutations) => {
       const added = n.tagName === 'IFRAME' ? [n] : [...n.querySelectorAll?.('iframe') || []];
       if (!added.length) continue;
       const keep = added[added.length - 1];
-      document.querySelectorAll('iframe').forEach((f) => { if (f !== keep) f.remove(); });
+      document.querySelectorAll('iframe').forEach((f) => { if (f !== keep) { f.remove(); window.dispatchEvent(new CustomEvent('ft:evicted', { detail: f })); } });
     }
   }
 }).observe(document.body, { childList: true, subtree: true });
@@ -79,11 +81,12 @@ const stack = [];
 let skipPop = 0;
 export const overlayHooks = { onFirstOpen: () => {}, onAllClosed: () => {} };
 
-export function openOverlay(el, onClose) {
+// persistent: el already lives in the DOM and must NOT be removed on close (used by the mini-player).
+export function openOverlay(el, onClose, { persistent = false } = {}) {
   if (!stack.length) overlayHooks.onFirstOpen();
   history.pushState({ ov: stack.length + 1 }, '');
-  stack.push({ el, onClose });
-  document.body.append(el);
+  stack.push({ el, onClose, persistent });
+  if (!persistent) document.body.append(el);
   document.body.classList.add('noscroll');
 }
 
@@ -91,7 +94,7 @@ export function closeOverlay(el) {
   const i = stack.findIndex((o) => o.el === el);
   if (i < 0) return;
   const closing = stack.splice(i).reverse(); // close it and anything above it
-  for (const o of closing) { o.el.remove(); o.onClose?.(); }
+  for (const o of closing) { if (!o.persistent) o.el.remove(); o.onClose?.(); }
   if (!stack.length) { document.body.classList.remove('noscroll'); overlayHooks.onAllClosed(); }
   skipPop = 1; // history.go(-n) fires a single popstate, which we must ignore
   history.go(-closing.length);
@@ -101,7 +104,7 @@ window.addEventListener('popstate', () => {
   if (skipPop) { skipPop = 0; return; }
   const o = stack.pop();
   if (!o) return;
-  o.el.remove();
+  if (!o.persistent) o.el.remove();
   o.onClose?.();
   if (!stack.length) { document.body.classList.remove('noscroll'); overlayHooks.onAllClosed(); }
 });

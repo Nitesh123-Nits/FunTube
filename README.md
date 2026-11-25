@@ -6,6 +6,7 @@ A positive-only video and reels PWA: comedy, life lessons, love and bonds, motiv
 - **Home feed** with infinite scroll, a mood picker and 8 focused categories: Motivation, Bhakti Songs, Satsang, Hindi & English Songs, Indian Comedy (Kapil Sharma, Zakir Khan, etc.), Money & Finance, Health Tips, Science & Maths
 - **Reels**: full-screen vertical swipe feed (arrow keys on desktop), double-tap to like, sound toggle, only the active reel loads a player
 - **Saved** videos and reels, **search**, **hide a channel** ("Not for me"), daily streak, light/dark toggle
+- **Mini-player**: minimize any video to a docked bar and keep browsing; tap to expand, play/pause or close from the bar; autoplays the next suggestion
 - **Positivity guard**: strict SafeSearch, a banned-word filter on titles and channels, shouty-clickbait filter, minimum views, embeddable-only. Searches for negative terms are refused.
 - Installable PWA, works from GitHub Pages (all paths are relative)
 

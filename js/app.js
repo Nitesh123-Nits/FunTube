@@ -156,15 +156,67 @@ function selectHome(sel) {
 }
 
 /* ---------- PLAYER ---------- */
-// One player at a time: tapping a related video swaps the video inside the open sheet
-// instead of stacking another sheet (stacked sheets kept every earlier iframe playing).
-let player = null; // { sheet, body, grid }
+// ONE persistent player. It switches between a full-screen "expanded" layout and a docked "mini"
+// bar purely with CSS, so the iframe is never moved or re-created and playback never restarts.
+let pp = null;
 
-function fillPlayer(item) {
-  const { sheet, body } = player;
-  player.grid?.destroy();
-  body.querySelector('iframe')?.remove(); // stop the previous video before loading the next
-  sheet.setAttribute('aria-label', item.title);
+function ensurePlayer() {
+  if (pp) return pp;
+  const video = h('div', { class: 'pp-video' });
+  const shield = h('div', { class: 'pp-shield', onclick: () => expandPlayer() });
+  video.append(shield);
+  const mTitle = h('div', { class: 'pp-mtitle' });
+  const mSub = h('div', { class: 'pp-msub' });
+  const playBtn = h('button', { class: 'pp-mbtn', 'aria-label': 'Play or pause', onclick: (e) => { e.stopPropagation(); togglePlayer(); } });
+  const mini = h('div', { class: 'pp-mini-meta', onclick: () => expandPlayer() },
+    h('div', { class: 'pp-mtext' }, mTitle, mSub), playBtn,
+    h('button', { class: 'pp-mbtn', 'aria-label': 'Close player', html: icons.close, onclick: (e) => { e.stopPropagation(); closePlayer(); } }));
+  const bar = h('div', { class: 'pp-bar' },
+    h('button', { class: 'icon-btn', 'aria-label': 'Minimize player', html: icons.down, onclick: () => minimizePlayer() }),
+    h('span', { class: 'sheet-ttl' }, 'Now playing'),
+    h('button', { class: 'icon-btn pp-x', 'aria-label': 'Close player', html: icons.close, onclick: () => closePlayer() }));
+  const body = h('div', { class: 'pp-body' });
+  const el = h('div', { class: 'pp expanded', role: 'dialog', hidden: true }, bar, h('div', { class: 'pp-top' }, video, mini), body);
+  document.body.append(el);
+  pp = { el, video, body, mTitle, mSub, playBtn, item: null, grid: null, expanded: false, state: -1, upNext: [], played: new Set() };
+  paintPlayBtn();
+  return pp;
+}
+
+const playerFrame = () => pp?.video.querySelector('iframe');
+const ppCmd = (func) => playerFrame()?.contentWindow?.postMessage(JSON.stringify({ event: 'command', func, args: [] }), '*');
+function paintPlayBtn() { if (pp) pp.playBtn.innerHTML = pp.state === 2 ? icons.play : icons.pause; }
+function togglePlayer() { if (!pp?.item) return; const pausing = pp.state !== 2; ppCmd(pausing ? 'pauseVideo' : 'playVideo'); pp.state = pausing ? 2 : 1; paintPlayBtn(); }
+
+// Player state coming back from YouTube (needs the "listening" handshake sent on load).
+window.addEventListener('message', (e) => {
+  if (!pp || e.source !== playerFrame()?.contentWindow || typeof e.data !== 'string') return;
+  let d; try { d = JSON.parse(e.data); } catch { return; }
+  const st = d.event === 'onStateChange' ? d.info : d.event === 'infoDelivery' && typeof d.info?.playerState === 'number' ? d.info.playerState : null;
+  if (st == null) return;
+  pp.state = st; paintPlayBtn();
+  if (st === 0) { // ended: play the next suggestion, like YouTube autoplay
+    const next = pp.upNext.find((v) => !pp.played.has(v.id));
+    if (next) loadPlayerItem(next);
+  }
+});
+
+function loadPlayerItem(item) {
+  const p = ensurePlayer();
+  p.grid?.destroy();
+  playerFrame()?.remove(); // stop the previous video before the next one loads
+  p.item = item; p.state = 1; p.played.add(item.id); p.upNext = [];
+  paintPlayBtn();
+  p.el.setAttribute('aria-label', item.title);
+  p.mTitle.textContent = item.title;
+  p.mSub.textContent = item.channel;
+  const frame = h('iframe', {
+    src: `https://www.youtube-nocookie.com/embed/${item.id}?autoplay=1&rel=0&playsinline=1&modestbranding=1&enablejsapi=1&origin=${encodeURIComponent(location.origin)}`,
+    title: item.title, allow: 'autoplay; encrypted-media; picture-in-picture; fullscreen', allowfullscreen: true,
+    referrerpolicy: 'strict-origin-when-cross-origin',
+  });
+  frame.addEventListener('load', () => frame.contentWindow?.postMessage(JSON.stringify({ event: 'listening', id: 1, channel: 'widget' }), '*'));
+  p.video.prepend(frame);
 
   const like = h('button', { class: 'pill' }, h('span', { html: icons.heart }), 'Like');
   const save = h('button', { class: 'pill' }, h('span', { html: icons.save }), 'Save');
@@ -172,38 +224,62 @@ function fillPlayer(item) {
   paint();
   like.onclick = () => { if (liked.toggle(item.id)) affinity.signal(item, 'like'); paint(); };
   save.onclick = () => { const on = saved.toggle(item); if (on) affinity.signal(item, 'save'); paint(); toast(on ? 'Saved' : 'Removed from Saved'); };
-
   const grid = h('div', { class: 'grid' });
   const sentinel = h('div', { class: 'sentinel' });
   const status = h('div', { class: 'status' });
-  body.replaceChildren(
-    h('div', { class: 'player' }, h('iframe', {
-      src: `https://www.youtube-nocookie.com/embed/${item.id}?autoplay=1&rel=0&playsinline=1&modestbranding=1&origin=${encodeURIComponent(location.origin)}`,
-      title: item.title, allow: 'autoplay; encrypted-media; picture-in-picture; fullscreen', allowfullscreen: true,
-      referrerpolicy: 'strict-origin-when-cross-origin' })),
+  p.body.replaceChildren(
     h('h2', { class: 'p-title' }, item.title),
     h('div', { class: 'p-sub' }, `${item.channel} · ${fmtViews(item.views)}`),
-    h('div', { class: 'p-actions' }, like, save, h('button', { class: 'pill', onclick: () => share(item) }, h('span', { html: icons.share }), 'Share')),
+    h('div', { class: 'p-actions' }, like, save,
+      h('button', { class: 'pill', onclick: () => share(item) }, h('span', { html: icons.share }), 'Share'),
+      h('button', { class: 'pill', onclick: () => minimizePlayer() }, h('span', { html: icons.down }), 'Minimize')),
     h('h3', { class: 'more-h' }, 'More good vibes'),
     grid, sentinel, status);
-  body.scrollTop = 0;
+  p.body.scrollTop = 0;
   const cats = item.cat ? [item.cat] : [];
-  player.grid = new InfiniteGrid(grid, sentinel, status, () => { const s = new FeedSource({ categories: cats, kind: 'video', boostQuery: item.q }); s.seen.add(item.id); return s; }, { root: body });
+  p.grid = new InfiniteGrid(grid, sentinel, status, () => {
+    const src = new FeedSource({ categories: cats, kind: 'video', boostQuery: item.q });
+    src.seen.add(item.id);
+    const more = src.more.bind(src);
+    src.more = async (n) => { const r = await more(n); p.upNext.push(...r); return r; };
+    return src;
+  }, { root: p.body });
 }
+
+function expandPlayer() {
+  const p = ensurePlayer();
+  if (p.expanded) return;
+  p.expanded = true;
+  p.el.hidden = false;
+  p.el.className = 'pp expanded';
+  document.body.classList.remove('has-mini');
+  openOverlay(p.el, () => { // runs on minimize, Back button or Esc
+    p.expanded = false;
+    if (p.item) { p.el.className = 'pp mini'; document.body.classList.add('has-mini'); }
+  }, { persistent: true });
+}
+
+function minimizePlayer() { if (pp?.expanded) closeOverlay(pp.el); }
+
+function closePlayer() {
+  if (!pp) return;
+  if (pp.expanded) closeOverlay(pp.el);
+  pp.grid?.destroy(); pp.grid = null;
+  playerFrame()?.remove();
+  pp.item = null; pp.upNext = []; pp.played.clear();
+  pp.el.hidden = true;
+  document.body.classList.remove('has-mini');
+}
+
+// If something else (a reel) takes over playback, the mini-player goes away with its video.
+window.addEventListener('ft:evicted', () => { if (pp?.item && !playerFrame()) closePlayer(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && pp?.expanded) minimizePlayer(); });
 
 function openPlayer(item) {
   stats.smile();
   affinity.signal(item, 'view');
-  if (player?.sheet.isConnected) { fillPlayer(item); return; }
-  const body = h('div', { class: 'sheet-body' });
-  const sheet = h('div', { class: 'sheet', role: 'dialog' },
-    h('div', { class: 'sheet-bar' },
-      h('button', { class: 'icon-btn', 'aria-label': 'Close', html: icons.close, onclick: () => closeOverlay(sheet) }),
-      h('span', { class: 'sheet-ttl' }, 'Now playing')),
-    body);
-  player = { sheet, body, grid: null };
-  openOverlay(sheet, () => { sheet.querySelector('iframe')?.remove(); player?.grid?.destroy(); player = null; });
-  fillPlayer(item);
+  loadPlayerItem(item);
+  expandPlayer();
 }
 
 /* ---------- REELS ---------- */
@@ -380,7 +456,7 @@ function showTab(name) {
   document.querySelectorAll('.view').forEach((v) => { v.hidden = v.id !== 'view-' + name; });
   document.querySelectorAll('.nav button').forEach((b) => b.classList.toggle('on', b.id === 'nav-' + name));
   document.body.dataset.tab = name;
-  if (name === 'reels') { buildReels(); reelsViewer?.resume(); }
+  if (name === 'reels') { closePlayer(); buildReels(); reelsViewer?.resume(); }
   if (name === 'saved') renderSaved();
   if (name !== 'reels') reelsViewer?.stop();
   history.replaceState(null, '', '#' + name);
