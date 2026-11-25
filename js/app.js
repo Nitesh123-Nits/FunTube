@@ -1,8 +1,8 @@
 import { CATEGORIES, MOODS, SEARCH_SUGGESTIONS } from './config.js';
-import { settings, saved, liked, blocked, stats, cache } from './store.js';
+import { settings, saved, liked, blocked, stats, cache, affinity } from './store.js';
 import { FeedSource, searchPage, isPositive, ApiError } from './api.js';
 import { ReelsViewer } from './reels.js';
-import { h, icons, toast, openOverlay, closeOverlay, fmtDuration, fmtViews, share } from './ui.js';
+import { h, icons, toast, openOverlay, closeOverlay, fmtDuration, fmtViews, share, overlayHooks } from './ui.js';
 
 const $ = (s) => document.querySelector(s);
 
@@ -57,10 +57,11 @@ function videoCard(item, { onHide, onOpen } = {}) {
   const saveBtn = h('button', { class: 'chip-btn', 'aria-label': 'Save', html: icons.save });
   const paint = () => saveBtn.classList.toggle('on', saved.has(item.id));
   paint();
-  saveBtn.onclick = (e) => { e.stopPropagation(); const on = saved.toggle(item); paint(); toast(on ? 'Saved' : 'Removed from Saved'); if (!on && onHide) onHide(); };
+  saveBtn.onclick = (e) => { e.stopPropagation(); const on = saved.toggle(item); if (on) affinity.signal(item, 'save'); paint(); toast(on ? 'Saved' : 'Removed from Saved'); if (!on && onHide) onHide(); };
   const hideBtn = h('button', { class: 'chip-btn', 'aria-label': 'Not for me', html: icons.block, onclick: (e) => {
     e.stopPropagation();
     blocked.add(item.channelId, item.channel);
+    affinity.signal(item, 'block');
     card.remove();
     toast(`Won't show ${item.channel} again`, { label: 'Undo', fn: () => blocked.remove(item.channelId) });
   } });
@@ -169,8 +170,8 @@ function fillPlayer(item) {
   const save = h('button', { class: 'pill' }, h('span', { html: icons.save }), 'Save');
   const paint = () => { like.classList.toggle('on', liked.has(item.id)); save.classList.toggle('on', saved.has(item.id)); };
   paint();
-  like.onclick = () => { liked.toggle(item.id); paint(); };
-  save.onclick = () => { const on = saved.toggle(item); paint(); toast(on ? 'Saved' : 'Removed from Saved'); };
+  like.onclick = () => { if (liked.toggle(item.id)) affinity.signal(item, 'like'); paint(); };
+  save.onclick = () => { const on = saved.toggle(item); if (on) affinity.signal(item, 'save'); paint(); toast(on ? 'Saved' : 'Removed from Saved'); };
 
   const grid = h('div', { class: 'grid' });
   const sentinel = h('div', { class: 'sentinel' });
@@ -187,11 +188,12 @@ function fillPlayer(item) {
     grid, sentinel, status);
   body.scrollTop = 0;
   const cats = item.cat ? [item.cat] : [];
-  player.grid = new InfiniteGrid(grid, sentinel, status, () => { const s = new FeedSource({ categories: cats, kind: 'video' }); s.seen.add(item.id); return s; }, { root: body });
+  player.grid = new InfiniteGrid(grid, sentinel, status, () => { const s = new FeedSource({ categories: cats, kind: 'video', boostQuery: item.q }); s.seen.add(item.id); return s; }, { root: body });
 }
 
 function openPlayer(item) {
   stats.smile();
+  affinity.signal(item, 'view');
   if (player?.sheet.isConnected) { fillPlayer(item); return; }
   const body = h('div', { class: 'sheet-body' });
   const sheet = h('div', { class: 'sheet', role: 'dialog' },
@@ -347,6 +349,12 @@ function openSettings(firstRun = false) {
           h('li', {}, 'Credentials → Create credentials → API key.'),
           h('li', {}, 'Optional: restrict the key to this site’s URL.'),
           h('li', {}, 'Paste it above. It is stored only in this browser.'))),
+      h('h3', {}, 'What FunTube learned about you'),
+      h('p', { class: 'hint', style: 'padding:0' }, (() => {
+        const top = affinity.top(3).map((id) => CATEGORIES.find((c) => c.id === id)?.label).filter(Boolean);
+        return top.length ? `Your feed leans towards: ${top.join(', ')}. It adapts as you watch, like and save.` : 'Watch, like and save videos and your feed will start adapting to you.';
+      })()),
+      h('button', { class: 'btn ghost', onclick: () => { affinity.reset(); toast('Recommendations reset'); closeOverlay(panel); } }, 'Reset recommendations'),
       h('h3', {}, 'Hidden channels'), blockedBox,
       h('div', { class: 'row-btns' },
         h('button', { class: 'btn ghost', onclick: () => { cache.clear(); toast('Cache cleared'); } }, 'Clear cache')),
@@ -360,6 +368,10 @@ function openSettings(firstRun = false) {
   openOverlay(panel, null);
 }
 $('#settingsBtn').onclick = () => openSettings();
+
+/* ---------- keep reels quiet while an overlay (search, player, settings) is on top ---------- */
+overlayHooks.onFirstOpen = () => reelsViewer?.stop();
+overlayHooks.onAllClosed = () => { if (tab === 'reels') reelsViewer?.resume(); };
 
 /* ---------- tabs ---------- */
 let tab = 'home';

@@ -1,6 +1,6 @@
 // Full-screen vertical reels viewer. Only the active reel mounts a YouTube iframe.
 import { h, icons, toast, share } from './ui.js';
-import { saved, liked, blocked, stats } from './store.js';
+import { saved, liked, blocked, stats, affinity } from './store.js';
 
 const origin = encodeURIComponent(location.origin);
 let soundOn = false; // becomes true after the user taps the sound button once
@@ -70,15 +70,16 @@ export class ReelsViewer {
       save.classList.toggle('on', saved.has(item.id));
     };
     paint();
-    like.onclick = () => { const on = liked.toggle(item.id); paint(); if (on) this.#burst(sec); };
-    save.onclick = () => { const on = saved.toggle(item); paint(); toast(on ? 'Saved' : 'Removed from Saved'); };
+    like.onclick = () => { const on = liked.toggle(item.id); paint(); if (on) { this.#burst(sec); affinity.signal(item, 'like'); } };
+    save.onclick = () => { const on = saved.toggle(item); paint(); if (on) affinity.signal(item, 'save'); toast(on ? 'Saved' : 'Removed from Saved'); };
     sound.onclick = () => this.setSound(!soundOn);
     const skip = h('button', { class: 'ra', 'aria-label': 'Not for me', html: icons.block, onclick: () => {
       blocked.add(item.channelId, item.channel);
+      affinity.signal(item, 'block');
       toast(`Won't show ${item.channel} again`, { label: 'Undo', fn: () => blocked.remove(item.channelId) });
       this.scrollTo(i + 1);
     } });
-    const tap = h('div', { class: 'reel-tap', ondblclick: () => { if (!liked.has(item.id)) { liked.toggle(item.id); paint(); } this.#burst(sec); }, onclick: () => this.togglePlay() });
+    const tap = h('div', { class: 'reel-tap', ondblclick: () => { if (!liked.has(item.id)) { liked.toggle(item.id); paint(); affinity.signal(item, 'like'); } this.#burst(sec); }, onclick: () => this.togglePlay() });
     const sec = h('section', { class: 'reel', 'data-i': i },
       h('div', { class: 'reel-stage' },
         h('img', { class: 'reel-thumb', src: item.thumb, alt: '', loading: 'lazy' }),
@@ -106,7 +107,10 @@ export class ReelsViewer {
 
   activate(i) {
     if (i === this.active) return;
+    const prev = this.items[this.active];
+    if (prev && Date.now() - this.startedAt < 2000) affinity.signal(prev, 'skip'); // swiped away fast
     this.active = i;
+    this.startedAt = Date.now();
     this.paused = false;
     this.scroll.querySelectorAll('.reel.playing').forEach((s) => { s.classList.remove('playing', 'is-paused'); s.querySelector('.reel-player').replaceChildren(); });
     const sec = this.scroll.children[i];
@@ -116,7 +120,7 @@ export class ReelsViewer {
     const src = `https://www.youtube-nocookie.com/embed/${item.id}?autoplay=1&mute=${soundOn ? 0 : 1}&controls=0&loop=1&playlist=${item.id}&playsinline=1&rel=0&modestbranding=1&fs=0&disablekb=1&iv_load_policy=3&enablejsapi=1&origin=${origin}`;
     sec.querySelector('.reel-player').replaceChildren(h('iframe', { src, title: item.title, allow: 'autoplay; encrypted-media; picture-in-picture', referrerpolicy: 'strict-origin-when-cross-origin' }));
     clearTimeout(this.watchTimer);
-    this.watchTimer = setTimeout(() => stats.smile(), 4000);
+    this.watchTimer = setTimeout(() => { stats.smile(); affinity.signal(item, 'reel'); }, 4000);
     if (this.loader && i >= this.items.length - 3) this.#loadMore();
   }
 

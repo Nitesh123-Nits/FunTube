@@ -99,3 +99,22 @@ export const cache = {
   },
   clear() { try { localStorage.removeItem('ft_cache'); } catch { /* ignore */ } },
 };
+
+// On-device recommendation signals. Scores per category, per search query (creator/topic) and per channel.
+const SIGNAL = { view: 1, reel: 1, like: 3, save: 4, skip: -0.6, block: -5 };
+export const affinity = {
+  get: () => read('ft_aff', { cats: {}, queries: {}, channels: {} }),
+  signal(item, kind) {
+    const w = SIGNAL[kind];
+    if (!item || !w) return;
+    const a = affinity.get();
+    for (const m of [a.cats, a.queries, a.channels]) {
+      for (const k of Object.keys(m)) { m[k] *= 0.98; if (Math.abs(m[k]) < 0.05) delete m[k]; }
+    }
+    const add = (m, k) => { if (k) m[k] = Math.max(-8, Math.min(30, (m[k] || 0) + w)); };
+    add(a.cats, item.cat); add(a.queries, item.q); add(a.channels, item.channelId);
+    write('ft_aff', a);
+  },
+  top: (n = 3) => Object.entries(affinity.get().cats).filter(([, v]) => v > 1).sort((x, y) => y[1] - x[1]).slice(0, n).map(([k]) => k),
+  reset() { try { localStorage.removeItem('ft_aff'); } catch { /* ignore */ } },
+};

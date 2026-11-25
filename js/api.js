@@ -1,6 +1,6 @@
 // YouTube Data API v3 wrapper + the positivity filter + infinite feed source.
 import { BANNED, LIMITS, CATEGORIES, QUERY_MODIFIERS } from './config.js';
-import { settings, blocked, cache } from './store.js';
+import { settings, blocked, cache, affinity } from './store.js';
 
 const API = 'https://www.googleapis.com/youtube/v3';
 
@@ -48,7 +48,7 @@ function acceptable(item, kind) {
 }
 
 /** One page of search results for a query. kind: 'video' | 'reel'. */
-export async function searchPage({ q, kind, pageToken, lang, cat }) {
+export async function searchPage({ q, kind, pageToken, lang, cat, qkey }) {
   const ck = `${kind}|${lang}|${q}|${pageToken || ''}`;
   let page = cache.get(ck);
   if (!page) {
@@ -82,7 +82,7 @@ export async function searchPage({ q, kind, pageToken, lang, cat }) {
     cache.set(ck, page);
   }
   return {
-    items: page.items.filter((it) => acceptable(it, kind)).map((it) => ({ ...it, cat })),
+    items: page.items.filter((it) => acceptable(it, kind)).map((it) => ({ ...it, cat, q: qkey })),
     next: page.next,
   };
 }
@@ -91,8 +91,9 @@ const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math
 
 /** Endless feed across several categories. Call more() repeatedly. */
 export class FeedSource {
-  constructor({ categories, kind }) {
+  constructor({ categories, kind, boostQuery = null }) {
     this.kind = kind;
+    this.boostQuery = boostQuery;
     const usable = (c) => kind !== 'reel' || !c.noReels;
     const wanted = categories.filter((id) => CATEGORIES.some((c) => c.id === id && usable(c)));
     this.categories = wanted.length ? wanted : CATEGORIES.filter(usable).map((c) => c.id);
@@ -114,10 +115,10 @@ export class FeedSource {
       if (!cat) continue;
       const texts = this.kind === 'reel' && cat.reelQueries ? cat.reelQueries : cat.queries;
       for (const text of texts) {
-        if (cat.fixed) { pool.push({ q: [text, mod].filter(Boolean).join(' '), lang: undefined, cat: cid, token: undefined, done: false }); continue; }
+        if (cat.fixed) { pool.push({ q: [text, mod].filter(Boolean).join(' '), base: text, lang: undefined, cat: cid, token: undefined, done: false }); continue; }
         for (const l of langs) {
           const q = [text, mod, l === 'hi' ? 'hindi' : ''].filter(Boolean).join(' ');
-          pool.push({ q, lang: l, cat: cid, token: undefined, done: false });
+          pool.push({ q, base: text, lang: l, cat: cid, token: undefined, done: false });
         }
       }
     }
@@ -125,12 +126,24 @@ export class FeedSource {
     this.idx = 0;
   }
 
+  /** Weighted random pick: learned favourites (category, creator/topic) are likelier, but every
+   *  query keeps a base weight so new things still show up (exploration). */
   #pick() {
-    for (let n = 0; n < this.pool.length; n++) {
-      const e = this.pool[this.idx++ % this.pool.length];
-      if (!e.done) return e;
-    }
-    return null;
+    const live = this.pool.filter((e) => !e.done);
+    if (!live.length) return null;
+    const a = affinity.get();
+    const max = (m) => Math.max(1, ...Object.values(m).filter((v) => v > 0));
+    const catMax = max(a.cats), qMax = max(a.queries);
+    const weights = live.map((e) => {
+      const c = a.cats[e.cat] || 0, qs = a.queries[e.base] || 0;
+      let w = 1 + 4 * Math.max(0, c) / catMax + 6 * Math.max(0, qs) / qMax;
+      if (c < -1 || qs < -1) w *= 0.3;
+      if (this.boostQuery && e.base === this.boostQuery) w += 8; // "more like this"
+      return w;
+    });
+    let r = Math.random() * weights.reduce((x, y) => x + y, 0);
+    for (let i = 0; i < live.length; i++) { r -= weights[i]; if (r <= 0) return live[i]; }
+    return live[live.length - 1];
   }
 
   async more(min = 8) {
@@ -145,7 +158,7 @@ export class FeedSource {
         if (!entry) break;
       }
       try {
-        const { items, next } = await searchPage({ q: entry.q, kind: this.kind, pageToken: entry.token, lang: entry.lang, cat: entry.cat });
+        const { items, next } = await searchPage({ q: entry.q, kind: this.kind, pageToken: entry.token, lang: entry.lang, cat: entry.cat, qkey: entry.base });
         entry.token = next || undefined;
         if (!next) entry.done = true;
         for (const it of items) if (!this.seen.has(it.id)) { this.seen.add(it.id); out.push(it); }
@@ -154,6 +167,9 @@ export class FeedSource {
         entry.done = true;
       }
     }
-    return shuffle(out);
+    // Order the batch: liked/saved channels float up, the rest stays shuffled.
+    const ch = affinity.get().channels;
+    return out.map((it) => ({ it, k: Math.random() + 0.35 * Math.max(-2, Math.min(6, ch[it.channelId] || 0)) }))
+      .sort((x, y) => y.k - x.k).map((x) => x.it);
   }
 }

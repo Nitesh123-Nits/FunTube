@@ -60,11 +60,27 @@ export function toast(message, action) {
   toastTimer = setTimeout(() => t.remove(), action ? 5000 : 2600);
 }
 
+// Hard invariant: at most ONE YouTube iframe exists on the page. Whenever a new player is
+// mounted, every other one is removed, so two videos can never play at the same time.
+new MutationObserver((mutations) => {
+  for (const m of mutations) {
+    for (const n of m.addedNodes) {
+      if (n.nodeType !== 1) continue;
+      const added = n.tagName === 'IFRAME' ? [n] : [...n.querySelectorAll?.('iframe') || []];
+      if (!added.length) continue;
+      const keep = added[added.length - 1];
+      document.querySelectorAll('iframe').forEach((f) => { if (f !== keep) f.remove(); });
+    }
+  }
+}).observe(document.body, { childList: true, subtree: true });
+
 // Overlay stack tied to the browser Back button.
 const stack = [];
 let skipPop = 0;
+export const overlayHooks = { onFirstOpen: () => {}, onAllClosed: () => {} };
 
 export function openOverlay(el, onClose) {
+  if (!stack.length) overlayHooks.onFirstOpen();
   history.pushState({ ov: stack.length + 1 }, '');
   stack.push({ el, onClose });
   document.body.append(el);
@@ -76,7 +92,7 @@ export function closeOverlay(el) {
   if (i < 0) return;
   const closing = stack.splice(i).reverse(); // close it and anything above it
   for (const o of closing) { o.el.remove(); o.onClose?.(); }
-  if (!stack.length) document.body.classList.remove('noscroll');
+  if (!stack.length) { document.body.classList.remove('noscroll'); overlayHooks.onAllClosed(); }
   skipPop = 1; // history.go(-n) fires a single popstate, which we must ignore
   history.go(-closing.length);
 }
@@ -87,7 +103,7 @@ window.addEventListener('popstate', () => {
   if (!o) return;
   o.el.remove();
   o.onClose?.();
-  if (!stack.length) document.body.classList.remove('noscroll');
+  if (!stack.length) { document.body.classList.remove('noscroll'); overlayHooks.onAllClosed(); }
 });
 
 export async function share(item) {

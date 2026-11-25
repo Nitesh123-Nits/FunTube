@@ -1,5 +1,5 @@
 // App-shell service worker. Network-first for our own files so updates show up, cache fallback for offline.
-const CACHE = 'funtube-v1';
+const CACHE = 'funtube-v2';
 const SHELL = [
   './', 'index.html', 'css/styles.css', 'manifest.webmanifest', 'icons/icon.svg',
   'js/app.js', 'js/api.js', 'js/config.js', 'js/reels.js', 'js/store.js', 'js/ui.js',
@@ -21,7 +21,7 @@ self.addEventListener('fetch', (e) => {
   const url = new URL(request.url);
   if (url.origin !== location.origin) return; // YouTube API / thumbnails / embeds go straight to network
   e.respondWith(
-    fetch(request)
+    fetch(request, { cache: 'no-cache' })
       .then((res) => {
         const copy = res.clone();
         caches.open(CACHE).then((c) => c.put(request, copy));
