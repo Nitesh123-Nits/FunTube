@@ -85,6 +85,7 @@ class InfiniteGrid {
     this.io.observe(sentinel);
     this.reset();
   }
+  destroy() { this.io.disconnect(); this.ended = true; }
   reset() {
     this.source = this.makeSource();
     this.loading = false;
@@ -154,8 +155,16 @@ function selectHome(sel) {
 }
 
 /* ---------- PLAYER ---------- */
-function openPlayer(item) {
-  stats.smile();
+// One player at a time: tapping a related video swaps the video inside the open sheet
+// instead of stacking another sheet (stacked sheets kept every earlier iframe playing).
+let player = null; // { sheet, body, grid }
+
+function fillPlayer(item) {
+  const { sheet, body } = player;
+  player.grid?.destroy();
+  body.querySelector('iframe')?.remove(); // stop the previous video before loading the next
+  sheet.setAttribute('aria-label', item.title);
+
   const like = h('button', { class: 'pill' }, h('span', { html: icons.heart }), 'Like');
   const save = h('button', { class: 'pill' }, h('span', { html: icons.save }), 'Save');
   const paint = () => { like.classList.toggle('on', liked.has(item.id)); save.classList.toggle('on', saved.has(item.id)); };
@@ -166,23 +175,33 @@ function openPlayer(item) {
   const grid = h('div', { class: 'grid' });
   const sentinel = h('div', { class: 'sentinel' });
   const status = h('div', { class: 'status' });
-  const sheet = h('div', { class: 'sheet', role: 'dialog', 'aria-label': item.title },
+  body.replaceChildren(
+    h('div', { class: 'player' }, h('iframe', {
+      src: `https://www.youtube-nocookie.com/embed/${item.id}?autoplay=1&rel=0&playsinline=1&modestbranding=1&origin=${encodeURIComponent(location.origin)}`,
+      title: item.title, allow: 'autoplay; encrypted-media; picture-in-picture; fullscreen', allowfullscreen: true,
+      referrerpolicy: 'strict-origin-when-cross-origin' })),
+    h('h2', { class: 'p-title' }, item.title),
+    h('div', { class: 'p-sub' }, `${item.channel} · ${fmtViews(item.views)}`),
+    h('div', { class: 'p-actions' }, like, save, h('button', { class: 'pill', onclick: () => share(item) }, h('span', { html: icons.share }), 'Share')),
+    h('h3', { class: 'more-h' }, 'More good vibes'),
+    grid, sentinel, status);
+  body.scrollTop = 0;
+  const cats = item.cat ? [item.cat] : [];
+  player.grid = new InfiniteGrid(grid, sentinel, status, () => { const s = new FeedSource({ categories: cats, kind: 'video' }); s.seen.add(item.id); return s; }, { root: body });
+}
+
+function openPlayer(item) {
+  stats.smile();
+  if (player?.sheet.isConnected) { fillPlayer(item); return; }
+  const body = h('div', { class: 'sheet-body' });
+  const sheet = h('div', { class: 'sheet', role: 'dialog' },
     h('div', { class: 'sheet-bar' },
       h('button', { class: 'icon-btn', 'aria-label': 'Close', html: icons.close, onclick: () => closeOverlay(sheet) }),
       h('span', { class: 'sheet-ttl' }, 'Now playing')),
-    h('div', { class: 'sheet-body' },
-      h('div', { class: 'player' }, h('iframe', {
-        src: `https://www.youtube-nocookie.com/embed/${item.id}?autoplay=1&rel=0&playsinline=1&modestbranding=1&origin=${encodeURIComponent(location.origin)}`,
-        title: item.title, allow: 'autoplay; encrypted-media; picture-in-picture; fullscreen', allowfullscreen: true,
-        referrerpolicy: 'strict-origin-when-cross-origin' })),
-      h('h2', { class: 'p-title' }, item.title),
-      h('div', { class: 'p-sub' }, `${item.channel} · ${fmtViews(item.views)}`),
-      h('div', { class: 'p-actions' }, like, save, h('button', { class: 'pill', onclick: () => share(item) }, h('span', { html: icons.share }), 'Share')),
-      h('h3', { class: 'more-h' }, 'More good vibes'),
-      grid, sentinel, status));
-  openOverlay(sheet, () => { sheet.querySelector('iframe')?.remove(); });
-  const cats = item.cat ? [item.cat] : [];
-  new InfiniteGrid(grid, sentinel, status, () => { const s = new FeedSource({ categories: cats, kind: 'video' }); s.seen.add(item.id); return s; }, { root: sheet.querySelector('.sheet-body') });
+    body);
+  player = { sheet, body, grid: null };
+  openOverlay(sheet, () => { sheet.querySelector('iframe')?.remove(); player?.grid?.destroy(); player = null; });
+  fillPlayer(item);
 }
 
 /* ---------- REELS ---------- */
