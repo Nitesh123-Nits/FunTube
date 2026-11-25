@@ -251,7 +251,7 @@ function openSavedReels(items, startId) {
 function openSearch() {
   let kind = 'video';
   let grid;
-  const input = h('input', { type: 'search', placeholder: 'Search good vibes…', enterkeyhint: 'search', autocomplete: 'off', 'aria-label': 'Search' });
+  const input = h('input', { type: 'search', placeholder: 'Search Kapil Sharma, bhajan, maths…', enterkeyhint: 'search', autocomplete: 'off', 'aria-label': 'Search' });
   const results = h('div', { class: 'search-results' });
   const kindBtns = ['video', 'reel'].map((k) => h('button', { class: k === kind ? 'on' : '', onclick: () => { kind = k; kindBtns.forEach((b, i) => b.classList.toggle('on', ['video', 'reel'][i] === k)); if (input.value.trim()) run(); } }, k === 'video' ? 'Videos' : 'Reels'));
   const overlay = h('div', { class: 'sheet search-sheet', role: 'dialog', 'aria-label': 'Search' },
@@ -277,7 +277,7 @@ function openSearch() {
     const sentinel = h('div', { class: 'sentinel' });
     grid = h('div', { class: 'grid' });
     results.replaceChildren(grid, sentinel, status);
-    const lang = settings.get().lang === 'hi' ? 'hi' : 'en';
+    const lang = undefined;
     const collected = [];
     const newSource = () => ({
       token: undefined, started: false, empty: false, seen: new Set(),
@@ -318,8 +318,7 @@ function openSettings(firstRun = false) {
   const s = settings.get();
   const keyInput = h('input', { type: 'password', value: s.apiKey, placeholder: 'Paste YouTube Data API v3 key', autocomplete: 'off', spellcheck: 'false', 'aria-label': 'YouTube API key' });
   const showBtn = h('button', { type: 'button', class: 'link-btn', onclick: () => { keyInput.type = keyInput.type === 'password' ? 'text' : 'password'; showBtn.textContent = keyInput.type === 'password' ? 'Show' : 'Hide'; } }, 'Show');
-  const langSel = h('select', { 'aria-label': 'Language' }, [['both', 'English + Hindi'], ['en', 'English'], ['hi', 'Hindi']].map(([v, l]) => h('option', { value: v, selected: s.lang === v }, l)));
-  const picked = new Set(s.interests);
+  const picked = new Set(s.interests.filter((id) => CATEGORIES.some((c) => c.id === id)));
   const interestChips = CATEGORIES.map((c) => {
     const b = h('button', { type: 'button', class: 'chip' + (picked.has(c.id) ? ' on' : ''), onclick: () => { picked.has(c.id) ? picked.delete(c.id) : picked.add(c.id); b.classList.toggle('on'); } }, `${c.emoji} ${c.label}`);
     return b;
@@ -334,11 +333,10 @@ function openSettings(firstRun = false) {
       h('button', { class: 'icon-btn', 'aria-label': 'Close', html: icons.close, onclick: () => closeOverlay(panel) }),
       h('span', { class: 'sheet-ttl' }, firstRun ? 'Welcome to FunTube 🎉' : 'Settings')),
     h('div', { class: 'sheet-body form' },
-      firstRun && h('p', { class: 'lead' }, 'Only positive vibes here: comedy, life lessons, love, motivation and more. Pick what you enjoy, then add a free YouTube key.'),
-      h('h3', {}, 'What makes you smile?'),
+      firstRun && h('p', { class: 'lead' }, 'Motivation, bhakti, songs, Indian comedy, money, health and science. Pick what you enjoy, then add a free YouTube key.'),
+      h('h3', {}, 'What do you want to watch?'),
       h('div', { class: 'chips wrap' }, interestChips),
       h('p', { class: 'hint' }, 'Leave empty to see everything.'),
-      h('h3', {}, 'Language'), langSel,
       h('h3', {}, 'YouTube API key'),
       h('div', { class: 'key-row' }, keyInput, showBtn),
       h('details', {},
@@ -353,7 +351,7 @@ function openSettings(firstRun = false) {
       h('div', { class: 'row-btns' },
         h('button', { class: 'btn ghost', onclick: () => { cache.clear(); toast('Cache cleared'); } }, 'Clear cache')),
       h('button', { class: 'btn big-btn', onclick: () => {
-        settings.set({ apiKey: keyInput.value.trim(), lang: langSel.value, interests: [...picked], onboarded: true });
+        settings.set({ apiKey: keyInput.value.trim(), interests: [...picked], onboarded: true });
         closeOverlay(panel);
         toast('Saved. Loading good vibes…');
         buildReels(true);

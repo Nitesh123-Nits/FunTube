@@ -1,64 +1,65 @@
 // FunTube configuration: categories, search queries, and the positivity guard.
 
+// Focused categories. Every query names a real creator, show or topic so results stay relevant.
+// fixed: true  -> query text is used as written (no English/Hindi splitting).
+// noReels: true -> skipped in the Reels tab (full-length songs).
+// reelQueries   -> optional short-form-specific queries for the Reels tab.
 export const CATEGORIES = [
-  { id: 'funny', label: 'Funny', emoji: '😂', queries: [
-    'clean comedy sketch', 'funny moments family friendly', 'stand up comedy clean',
-    'hilarious kids moments', 'comedy short film wholesome', 'funny dog and cat videos',
-    'funny office comedy clean', 'try not to laugh clean'] },
-  { id: 'life', label: 'Life Lessons', emoji: '🌱', queries: [
-    'life lessons', 'life lessons short story', 'wisdom from grandparents',
-    'real life lessons for young adults', 'life advice that changed my life',
-    'things I wish I knew earlier', 'lessons from failure and growth'] },
-  { id: 'love', label: 'Love & Bonds', emoji: '💖', queries: [
-    'wholesome love story', 'sweet couple moments', 'heartwarming family moments',
-    'parents love for children', 'friendship wholesome moments',
-    'soldier homecoming surprise', 'respect and love in relationships'] },
-  { id: 'motivation', label: 'Motivation', emoji: '🔥', queries: [
-    'motivational speech', 'morning motivation', 'never give up story',
-    'discipline and habits motivation', 'growth mindset', 'success story inspiring'] },
-  { id: 'wholesome', label: 'Wholesome', emoji: '🥹', queries: [
-    'wholesome moments', 'faith in humanity restored', 'random acts of kindness',
-    'heartwarming surprises', 'kind strangers helping'] },
-  { id: 'stories', label: 'True Stories', emoji: '📖', queries: [
-    'inspiring true story', 'overcoming struggles inspiring', 'short moral story',
-    'motivational short film', 'from zero to success story'] },
-  { id: 'animals', label: 'Cute Animals', emoji: '🐶', queries: [
-    'cute animals wholesome', 'baby animals', 'animal rescue heartwarming',
-    'dogs reunite with owners', 'funny cute pets'] },
-  { id: 'talent', label: 'Amazing Talent', emoji: '🌟', queries: [
-    'amazing talent', 'incredible skills', 'satisfying craftsmanship',
-    'got talent best performances', 'street performers amazing'] },
-  { id: 'calm', label: 'Calm & Nature', emoji: '🌿', queries: [
-    'relaxing nature', 'peaceful sunrise nature', 'calm piano music',
-    'mindfulness meditation short', 'beautiful scenery 4k'] },
-  { id: 'music', label: 'Feel-good Music', emoji: '🎶', queries: [
-    'feel good songs', 'happy upbeat music', 'acoustic cover happy',
-    'instrumental feel good', 'joyful dance'] },
-  { id: 'learn', label: 'Learn Something', emoji: '💡', queries: [
-    'amazing facts', 'science experiments for fun', 'how things work',
-    'life hacks that work', 'mind blowing facts'] },
-  { id: 'health', label: 'Healthy Life', emoji: '🧘', queries: [
-    'healthy habits', 'morning routine healthy', 'yoga for beginners',
-    'happy healthy lifestyle', 'gratitude practice'] },
-  { id: 'money', label: 'Money Wisdom', emoji: '💰', queries: [
-    'money habits for young people', 'financial wisdom simple',
-    'saving and investing basics'] },
+  { id: 'motivation', label: 'Motivation', emoji: '🔥', fixed: true, queries: [
+    'Sandeep Maheshwari motivation hindi', 'Gaur Gopal Das motivational speech', 'Vivek Bindra motivation hindi',
+    'best motivational speech hindi', 'Josh Talks success story hindi', 'APJ Abdul Kalam inspiring speech',
+    'Jim Rohn motivation', 'Simon Sinek inspiring talk', 'Les Brown motivational speech', 'best motivational speech english',
+    'Ranveer Allahbadia motivation'],
+    reelQueries: ['motivational shorts hindi', 'Sandeep Maheshwari shorts', 'motivation shorts english', 'success mindset shorts hindi'] },
+  { id: 'bhakti', label: 'Bhakti Songs', emoji: '🙏', fixed: true, queries: [
+    'Hanuman Chalisa', 'Shri Krishna bhajan', 'Shiv bhajan hindi', 'Ram bhajan hindi', 'aarti sangrah',
+    'Anuradha Paudwal bhajan', 'Jubin Nautiyal bhakti song', 'Hari Om Sharan bhajan', 'Gulshan Kumar bhajan',
+    'Durga mata bhajan', 'Sai baba bhajan', 'Ganesh aarti'],
+    reelQueries: ['bhajan shorts', 'Krishna bhajan shorts', 'Hanuman ji bhajan shorts', 'Shiv bhajan shorts'] },
+  { id: 'satsang', label: 'Satsang', emoji: '🕉️', fixed: true, queries: [
+    'Premanand Ji Maharaj satsang', 'Aniruddhacharya Ji Maharaj pravachan', 'Devkinandan Thakur ji katha',
+    'Pradeep Mishra shiv katha', 'Bhagavad Gita saar hindi', 'Gaur Gopal Das bhagavad gita', 'Sadhguru hindi'],
+    reelQueries: ['Premanand Ji Maharaj shorts', 'satsang shorts hindi', 'Bhagavad Gita shorts hindi'] },
+  { id: 'songs', label: 'Hindi & English Songs', emoji: '🎶', fixed: true, noReels: true, queries: [
+    'latest Hindi songs', 'Arijit Singh best songs', 'Atif Aslam hindi songs', 'Jubin Nautiyal songs',
+    'Kishore Kumar hit songs', 'Lata Mangeshkar best songs', 'Mohammed Rafi old hindi songs', 'Hindi romantic songs',
+    '90s Hindi songs', 'Darshan Raval songs', 'Ed Sheeran best songs', 'Coldplay greatest hits', 'acoustic english songs'] },
+  { id: 'funny', label: 'Indian Comedy', emoji: '😂', fixed: true, queries: [
+    'The Kapil Sharma Show best comedy', 'Kapil Sharma show funny moments', 'Zakir Khan stand up', 'Abhishek Upmanyu stand up',
+    'Anubhav Singh Bassi stand up', 'Vipul Goyal stand up', 'BB Ki Vines Bhuvan Bam', 'Amit Bhadana comedy',
+    'Harsh Gujral comedy', 'Aashish Chanchlani vines', 'Sunil Grover comedy', 'Raju Srivastav comedy', 'Biswa Kalyan Rath stand up',
+    'Kenny Sebastian stand up'],
+    reelQueries: ['Kapil Sharma comedy shorts', 'Zakir Khan shorts', 'Indian comedy shorts clean', 'Amit Bhadana shorts', 'Bhuvan Bam shorts'] },
+  { id: 'finance', label: 'Money & Finance', emoji: '💰', fixed: true, queries: [
+    'personal finance hindi', 'Ankur Warikoo money lessons', 'CA Rachana Ranade stock market', 'Pranjal Kamra investing',
+    'mutual fund SIP explained hindi', 'Zerodha Varsity basics', 'how to save money hindi', 'Akshat Shrivastava investing',
+    'financial freedom hindi'],
+    reelQueries: ['personal finance shorts hindi', 'SIP mutual fund shorts', 'money saving tips shorts hindi', 'stock market basics shorts'] },
+  { id: 'health', label: 'Health Tips', emoji: '🧘', fixed: true, queries: [
+    'health tips hindi', 'yoga for beginners hindi', 'Dr Tarang Krishna health', 'Dr Pal health tips', 'Fit Tuber fitness',
+    'Baba Ramdev yoga', 'Doctor Mike health tips', 'healthy indian diet tips', 'sleep better tips hindi', 'ayurveda health tips'],
+    reelQueries: ['health tips shorts hindi', 'yoga shorts hindi', 'healthy habits shorts', 'home remedies shorts hindi'] },
+  { id: 'learn', label: 'Science & Maths', emoji: '🔬', fixed: true, queries: [
+    'maths tricks', 'Vedic maths tricks hindi', 'science experiments hindi', 'physics explained simply', 'amazing science facts hindi',
+    'Veritasium', 'Kurzgesagt', 'Numberphile', 'Mark Rober', 'Khan Sir science', 'Physics Wallah motivation', 'ISRO space facts hindi'],
+    reelQueries: ['maths tricks shorts', 'vedic maths trick shorts', 'science experiment shorts', 'science facts shorts hindi',
+      'physics facts shorts', 'space facts shorts', 'chemistry experiment shorts', 'brain teaser maths shorts'] },
 ];
 
 export const MOODS = [
-  { id: 'laugh', label: 'Make me laugh', emoji: '😄', cats: ['funny', 'animals'] },
-  { id: 'boost', label: 'Need a boost', emoji: '💪', cats: ['motivation', 'stories', 'wholesome', 'love'] },
-  { id: 'calm', label: 'Calm me down', emoji: '😌', cats: ['calm', 'music', 'health'] },
-  { id: 'learn', label: 'Teach me', emoji: '🧠', cats: ['learn', 'life', 'money', 'talent'] },
+  { id: 'laugh', label: 'Make me laugh', emoji: '😄', cats: ['funny'] },
+  { id: 'boost', label: 'Need a boost', emoji: '💪', cats: ['motivation', 'satsang'] },
+  { id: 'calm', label: 'Peace & bhakti', emoji: '🙏', cats: ['bhakti', 'satsang', 'songs'] },
+  { id: 'learn', label: 'Teach me', emoji: '🧠', cats: ['learn', 'finance', 'health'] },
 ];
 
 // When every query in a pool is exhausted we re-run them with these suffixes,
 // which gives an effectively endless feed.
-export const QUERY_MODIFIERS = ['', 'best', 'new', 'latest', 'top', 'most loved', 'compilation'];
+export const QUERY_MODIFIERS = ['', 'best', 'new', 'latest', 'top', 'full'];
 
 export const SEARCH_SUGGESTIONS = [
-  'wholesome', 'clean comedy', 'life lessons', 'motivation', 'kindness',
-  'cute puppies', 'success story', 'gratitude', 'happy songs', 'mother love',
+  'Kapil Sharma', 'Hanuman Chalisa', 'Sandeep Maheshwari', 'maths tricks', 'SIP investing',
+  'yoga', 'Arijit Singh', 'Zakir Khan', 'Premanand Ji Maharaj', 'Warikoo',
 ];
 
 // The positivity guard. Titles/channels matching this are dropped.
@@ -76,7 +77,8 @@ export const BANNED = new RegExp(
   ].join('|') + ')\\b', 'i');
 
 export const LIMITS = {
-  MIN_VIEWS: 3000,
+  MIN_VIEWS: 30000,
+  MIN_VIEWS_REEL: 20000,
   REEL_MAX_SECONDS: 180,
   REEL_MIN_SECONDS: 5,
   VIDEO_MIN_SECONDS: 60,

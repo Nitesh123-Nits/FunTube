@@ -3,11 +3,10 @@
 A positive-only video and reels PWA: comedy, life lessons, love and bonds, motivation, wholesome moments, cute animals, calm, feel-good music, and more. No drama, pranks, roasts, gossip or doom.
 
 ## Features
-- **Home feed** with infinite scroll, mood picker ("Make me laugh", "Need a boost", "Calm me down", "Teach me") and 13 category chips
+- **Home feed** with infinite scroll, a mood picker and 8 focused categories: Motivation, Bhakti Songs, Satsang, Hindi & English Songs, Indian Comedy (Kapil Sharma, Zakir Khan, etc.), Money & Finance, Health Tips, Science & Maths
 - **Reels**: full-screen vertical swipe feed (arrow keys on desktop), double-tap to like, sound toggle, only the active reel loads a player
 - **Saved** videos and reels, **search**, **hide a channel** ("Not for me"), daily streak, light/dark toggle
 - **Positivity guard**: strict SafeSearch, a banned-word filter on titles and channels, shouty-clickbait filter, minimum views, embeddable-only. Searches for negative terms are refused.
-- English, Hindi or both
 - Installable PWA, works from GitHub Pages (all paths are relative)
 
 ## How content works

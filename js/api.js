@@ -42,7 +42,7 @@ function acceptable(item, kind) {
   const letters = item.title.replace(/[^A-Za-z]/g, '');
   if (letters.length > 12 && letters.replace(/[^A-Z]/g, '').length / letters.length > 0.7) return false; // SHOUTY clickbait
   if ((item.title.match(/!/g) || []).length >= 3) return false;
-  if (item.views < LIMITS.MIN_VIEWS) return false;
+  if (item.views < (kind === 'reel' ? LIMITS.MIN_VIEWS_REEL : LIMITS.MIN_VIEWS)) return false;
   if (kind === 'reel') return item.dur >= LIMITS.REEL_MIN_SECONDS && item.dur <= LIMITS.REEL_MAX_SECONDS;
   return item.dur >= LIMITS.VIDEO_MIN_SECONDS && item.dur <= LIMITS.VIDEO_MAX_SECONDS;
 }
@@ -55,7 +55,7 @@ export async function searchPage({ q, kind, pageToken, lang, cat }) {
     const search = await yt('/search', {
       part: 'snippet', type: 'video', maxResults: LIMITS.PAGE_SIZE, q: kind === 'reel' ? `${q} #shorts` : q,
       safeSearch: 'strict', videoEmbeddable: 'true', videoSyndicated: 'true',
-      videoDuration: kind === 'reel' ? 'short' : 'medium', relevanceLanguage: lang, pageToken,
+      videoDuration: kind === 'reel' ? 'short' : 'medium', regionCode: 'IN', relevanceLanguage: lang, pageToken,
     });
     const ids = (search.items || []).map((i) => i.id.videoId).filter(Boolean);
     let details = {};
@@ -93,7 +93,9 @@ const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math
 export class FeedSource {
   constructor({ categories, kind }) {
     this.kind = kind;
-    this.categories = categories.length ? categories : CATEGORIES.map((c) => c.id);
+    const usable = (c) => kind !== 'reel' || !c.noReels;
+    const wanted = categories.filter((id) => CATEGORIES.some((c) => c.id === id && usable(c)));
+    this.categories = wanted.length ? wanted : CATEGORIES.filter(usable).map((c) => c.id);
     this.seen = new Set();
     this.round = 0;
     this.pool = [];
@@ -110,7 +112,9 @@ export class FeedSource {
     for (const cid of this.categories) {
       const cat = CATEGORIES.find((c) => c.id === cid);
       if (!cat) continue;
-      for (const text of cat.queries) {
+      const texts = this.kind === 'reel' && cat.reelQueries ? cat.reelQueries : cat.queries;
+      for (const text of texts) {
+        if (cat.fixed) { pool.push({ q: [text, mod].filter(Boolean).join(' '), lang: undefined, cat: cid, token: undefined, done: false }); continue; }
         for (const l of langs) {
           const q = [text, mod, l === 'hi' ? 'hindi' : ''].filter(Boolean).join(' ');
           pool.push({ q, lang: l, cat: cid, token: undefined, done: false });
