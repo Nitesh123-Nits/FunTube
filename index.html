@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>FunTube · Only good vibes</title>
+  <meta name="description" content="FunTube shows only positive videos and reels: comedy, life lessons, love, motivation and more.">
+  <meta name="theme-color" content="#fff7e8">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="FunTube">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body data-tab="home">
+  <header class="top">
+    <a class="logo" href="#home" aria-label="FunTube home"><span class="logo-mark">😊</span><span class="logo-text">Fun<b>Tube</b></span></a>
+    <div class="top-actions">
+      <button id="streak" class="streak" aria-label="Daily streak">🔥 0</button>
+      <button id="searchBtn" class="icon-btn" aria-label="Search"></button>
+      <button id="settingsBtn" class="icon-btn" aria-label="Settings"></button>
+      <button id="themeBtn" class="icon-btn" aria-label="Toggle light or dark mode"></button>
+    </div>
+  </header>
+
+  <main>
+    <section id="view-home" class="view">
+      <div id="moods" class="moods"></div>
+      <div class="chips-wrap"><div id="chips" class="chips"></div></div>
+      <div id="homeGrid" class="grid"></div>
+      <div id="homeSentinel" class="sentinel"></div>
+      <div id="homeStatus" class="status"></div>
+    </section>
+
+    <section id="view-reels" class="view" hidden>
+      <div id="reelsRoot" class="reels-root"></div>
+    </section>
+
+    <section id="view-saved" class="view" hidden>
+      <div id="savedRoot" class="saved-root"></div>
+    </section>
+  </main>
+
+  <nav class="nav" aria-label="Main">
+    <button id="nav-home" class="on"><i></i><span>Home</span></button>
+    <button id="nav-reels"><i></i><span>Reels</span></button>
+    <button id="nav-saved"><i></i><span>Saved</span></button>
+  </nav>
+
+  <noscript><p style="padding:2rem">FunTube needs JavaScript to run.</p></noscript>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
