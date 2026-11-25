@@ -232,7 +232,8 @@ function loadPlayerItem(item) {
     h('div', { class: 'p-sub' }, `${item.channel} · ${fmtViews(item.views)}`),
     h('div', { class: 'p-actions' }, like, save,
       h('button', { class: 'pill', onclick: () => share(item) }, h('span', { html: icons.share }), 'Share'),
-      h('button', { class: 'pill', onclick: () => minimizePlayer() }, h('span', { html: icons.down }), 'Minimize')),
+      h('button', { class: 'pill', onclick: () => minimizePlayer() }, h('span', { html: icons.down }), 'Minimize'),
+      h('a', { class: 'pill', href: `https://www.youtube.com/watch?v=${item.id}`, target: '_blank', rel: 'noopener' }, 'Open in YouTube')),
     h('h3', { class: 'more-h' }, 'More good vibes'),
     grid, sentinel, status);
   p.body.scrollTop = 0;

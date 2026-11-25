@@ -206,3 +206,4 @@ details ol { padding-left: 20px; line-height: 1.7; }
 body.has-mini { padding-bottom: calc(var(--nav-h) + 64px + env(safe-area-inset-bottom)); }
 body.has-mini .toast { bottom: calc(var(--nav-h) + 82px + env(safe-area-inset-bottom)); }
 .pp-body { min-height: 0; }
+.pill { text-decoration: none; color: inherit; }
